@@ -98,7 +98,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run Snyk
-        uses: snyk/actions/node@dc22abdbe8ec00e2a925256fef96f319ca5510ce
+        uses: snyk/actions/node@806182742461562b67788a64410098c9d9b96adb
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
