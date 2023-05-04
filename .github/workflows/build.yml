@@ -43,7 +43,7 @@ jobs:
             bestpractices.coreinfrastructure.org:443
             github.com:443
             index.docker.io:443
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           persist-credentials: false
@@ -56,8 +56,56 @@ jobs:
       - name: Upload output
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
         with:
-          name: Scorecard output
+          name: Scorecard
           path: scorecard.sarif
+      - name: Upload SARIF to dashboard
+        if: "!github.event.repository.private"
+        uses: github/codeql-action/upload-sarif@f31a31c052207cc13b328d6295c5b728bb49568c
+        with:
+          sarif_file: scorecard.sarif
+          category: Scorecard
+
+  dependency-review:
+    if: "!contains(github.repository, '.warriors-life-template') && !github.event.repository.private"
+    name: Dependency review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@6b3083af2869dc3314a0257a42f4af696cc79ba3
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+      - name: Checkout
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          persist-credentials: false
+      - name: Dependency review
+        uses: actions/dependency-review-action@f46c48ed6d4f1227fb2d9ea62bf6bcbed315589e
+
+  codeql:
+    if: "!contains(github.repository, '.warriors-life-template') && !github.event.repository.private"
+    name: CodeQL scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@6b3083af2869dc3314a0257a42f4af696cc79ba3
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+      - name: Checkout
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        with:
+          persist-credentials: false
+      - name: Init
+        uses: github/codeql-action/init@f31a31c052207cc13b328d6295c5b728bb49568c
+      - name: Scan
+        uses: github/codeql-action/analyze@f31a31c052207cc13b328d6295c5b728bb49568c
 
   build:
     if: "!contains(github.repository, '.warriors-life-template')"
@@ -93,7 +141,7 @@ jobs:
           allowed-endpoints: >
             api.snyk.io:443
             github.com:443
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
           persist-credentials: false
@@ -106,8 +154,14 @@ jobs:
       - name: Upload output
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
         with:
-          name: Snyk JS output
+          name: Snyk (JS)
           path: snyk-js.sarif
+      - name: Upload SARIF to dashboard
+        if: "!github.event.repository.private"
+        uses: github/codeql-action/upload-sarif@f31a31c052207cc13b328d6295c5b728bb49568c
+        with:
+          sarif_file: snyk-js.sarif
+          category: Snyk (JS)
 
   test-unit:
     if: "!contains(github.repository, '.warriors-life-template')"
