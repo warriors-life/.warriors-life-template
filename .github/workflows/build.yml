@@ -1,0 +1,140 @@
+# TODO: move all of this into separate actions (warriors-life/test-code-action, warriors-life/test-image-action, warriors-life/build-image-action, warriors-life/push-image-action)
+# TODO: cache actions/checkout's output
+# TODO: use SARIF and github/codeql-action/upload-sarif when we'll move to GitHub Advanced Security
+
+name: Build
+
+on:
+  push:
+    branches-ignore:
+      - 'dependabot/**'
+  pull_request:
+    branches:
+      - 'release/?*'
+      - 'dev'
+  schedule:
+    - cron: '30 1 * * 6' # Weekly on Saturdays
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  NODE_ENV: ${{ (startsWith(github.ref, 'ref/heads/release') || startsWith(github.base_ref, 'ref/heads/release')) && 'production' || 'development' }}
+
+permissions: {}
+
+jobs:
+  scorecard:
+    if: "!contains(github.repository, '.warriors-life-template') && (github.event_name == 'pull_request' || github.ref == 'ref/heads/dev')"
+    name: Check supply chain with Scorecard
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1f99358870fe1c846a3ccba386cc2b2246836776
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            api.osv.dev:443
+            auth.docker.io:443
+            bestpractices.coreinfrastructure.org:443
+            github.com:443
+            index.docker.io:443
+      - name: Checkout code
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          persist-credentials: false
+      - name: Run analysis
+        uses: ossf/scorecard-action@e38b1902ae4f44df626f11ba0734b14fb91f8f86
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload output
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        with:
+          name: Scorecard output
+          path: scorecard.sarif
+
+  build:
+    if: "!contains(github.repository, '.warriors-life-template')"
+    name: Build
+    runs-on: ubuntu-latest
+    outputs:
+      run-snyk: ${{ steps.set-outputs.outputs.run-snyk }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1f99358870fe1c846a3ccba386cc2b2246836776
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints:
+      - name: Set outputs
+        id: set-outputs
+        run: |
+          echo "run-snyk=${{ secrets.SNYK_TOKEN != '' }}" >> $GITHUB_OUTPUT
+
+  snyk-js:
+    if: needs.build.outputs.run-snyk == 'true'
+    needs: build
+    name: Check JS code for vulnerabilities with Snyk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1f99358870fe1c846a3ccba386cc2b2246836776
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.snyk.io:443
+            github.com:443
+      - name: Checkout code
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          persist-credentials: false
+      - name: Run Snyk
+        uses: snyk/actions/node@dc22abdbe8ec00e2a925256fef96f319ca5510ce
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --sarif-file-output=snyk-js.sarif
+      - name: Upload output
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        with:
+          name: Snyk JS output
+          path: snyk-js.sarif
+
+  test-unit:
+    if: "!contains(github.repository, '.warriors-life-template')"
+    name: Run unit tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: test
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1f99358870fe1c846a3ccba386cc2b2246836776
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+      - name: Checkout
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c
+        with:
+          node-version: 18.16.0
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Run unit tests
+        run: npm test
