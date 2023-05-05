@@ -1,4 +1,4 @@
-name: Update release branch from dev in template repository
+name: Update release branch from dev
 
 on:
   push:
@@ -8,33 +8,8 @@ on:
 permissions: {}
 
 jobs:
-  update-branch:
+  call-workflow:
     if: contains(github.repository, '.warriors-life-template')
-
-    name: Update release branch from dev in template repository
-
-    runs-on: ubuntu-latest
-
+    uses: warriors-life/.warriors-life-workflows/update-template.yml@dev
     permissions:
       contents: write
-
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@6b3083af2869dc3314a0257a42f4af696cc79ba3
-        with:
-          disable-sudo: true
-          egress-policy: block
-          allowed-endpoints: >
-            github.com:443
-
-      - name: Checkout
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
-        with:
-          fetch-depth: 0
-
-      - name: Update
-        run: |
-          git checkout release
-          git branch -m release dummy
-          git branch -m dev release
-          git push -f origin release
