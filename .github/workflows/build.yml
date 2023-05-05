@@ -16,7 +16,7 @@ permissions: {}
 jobs:
   call-workflow:
     if: "!contains(github.repository, '.warriors-life-template')"
-    uses: warriors-life/.warriors-life-workflows/build-general.yml@dev
+    uses: warriors-life/.warriors-life-workflows/.github/workflows/build-general.yml@dev
     secrets: inherit
     permissions:
       actions: read

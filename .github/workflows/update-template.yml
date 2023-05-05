@@ -10,6 +10,6 @@ permissions: {}
 jobs:
   call-workflow:
     if: contains(github.repository, '.warriors-life-template')
-    uses: warriors-life/.warriors-life-workflows/update-template.yml@dev
+    uses: warriors-life/.warriors-life-workflows/.github/workflows/update-template.yml@dev
     permissions:
       contents: write
