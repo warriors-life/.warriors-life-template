@@ -19,5 +19,8 @@ jobs:
     uses: warriors-life/.warriors-life-workflows/.github/workflows/build-general.yml@dev
     secrets: inherit
     permissions:
+      security-events: write
       actions: read
       contents: read
+      issues: read
+      pull-requests: read
