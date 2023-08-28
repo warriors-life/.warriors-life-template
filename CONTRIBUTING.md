@@ -10,6 +10,9 @@ Building from source:
 
 ## Running tests
 Running unit tests:
+```sh
+cd test && npm run test
+```
 
 ## Preparing PR
 It is suggested that you add unit tests if you are adding a new functionality or fix a bug. Please also update [changelog](CHANGELOG.md).
